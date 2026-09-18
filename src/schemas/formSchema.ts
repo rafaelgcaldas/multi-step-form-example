@@ -69,12 +69,12 @@ export const preferencesSchema = z.object({
 });
 
 // ────────────────────────────────────────────────────────────
-// Schema completo (merge de todas as etapas + validação cruzada)
+// Schema completo (extend de todas as etapas + validação cruzada)
 // ────────────────────────────────────────────────────────────
 export const fullFormSchema = personalDataSchema
-  .merge(addressSchema)
-  .merge(accountFieldsSchema)
-  .merge(preferencesSchema)
+  .extend(addressSchema.shape)
+  .extend(accountFieldsSchema.shape)
+  .extend(preferencesSchema.shape)
   .refine((data) => data.senha === data.confirmarSenha, {
     message: "As senhas não coincidem",
     path: ["confirmarSenha"],
