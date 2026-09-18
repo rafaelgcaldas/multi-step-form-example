@@ -1,9 +1,9 @@
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, type FieldPath } from "react-hook-form";
 import TextField, { type TextFieldProps } from "@mui/material/TextField";
 import type { FormData } from "../../schemas/formSchema";
 
 type Props = {
-  name: keyof FormData;
+  name: FieldPath<FormData>;
   label: string;
 } & Omit<TextFieldProps, "name">;
 

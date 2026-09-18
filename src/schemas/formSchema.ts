@@ -49,6 +49,17 @@ const accountFieldsSchema = z.object({
 // ────────────────────────────────────────────────────────────
 // Etapa 4 — Preferências
 // ────────────────────────────────────────────────────────────
+
+// Um item da lista dinâmica de e-mails de contato. Usamos `{ value: string }`
+// (em vez de `string` puro) porque é o formato exigido pelo `useFieldArray`
+// do react-hook-form.
+export const emailContatoSchema = z.object({
+  value: z.string(),
+});
+
+export const MAX_EMAILS_CONTATO = 3;
+export const MIN_EMAILS_CONTATO = 1;
+
 export const preferencesSchema = z.object({
   plano: z.enum(["gratuito", "basico", "pro", "enterprise"], {
     message: "Selecione um plano",
@@ -58,6 +69,12 @@ export const preferencesSchema = z.object({
   formaContato: z.enum(["email", "telefone", "whatsapp"], {
     message: "Selecione uma forma de contato",
   }),
+  // A validação real (obrigatório e formato de e-mail) só se aplica quando
+  // `formaContato === "email"` — isso é feito no `superRefine` do
+  // `fullFormSchema`, para não travar o envio quando o campo estiver oculto.
+  emailsContato: z
+    .array(emailContatoSchema)
+    .max(MAX_EMAILS_CONTATO, `Máximo de ${MAX_EMAILS_CONTATO} e-mails`),
   comentarios: z
     .string()
     .max(500, "Máximo de 500 caracteres")
@@ -78,6 +95,36 @@ export const fullFormSchema = personalDataSchema
   .refine((data) => data.senha === data.confirmarSenha, {
     message: "As senhas não coincidem",
     path: ["confirmarSenha"],
+  })
+  .superRefine((data, ctx) => {
+    // Os e-mails de contato só são obrigatórios/validados quando o usuário
+    // escolheu "E-mail" como forma de contato preferida.
+    if (data.formaContato !== "email") return;
+
+    if (data.emailsContato.length < MIN_EMAILS_CONTATO) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Informe ao menos um e-mail de contato",
+        path: ["emailsContato"],
+      });
+      return;
+    }
+
+    data.emailsContato.forEach((item, index) => {
+      const result = z
+        .string()
+        .min(1, "Informe um e-mail")
+        .email("E-mail inválido")
+        .safeParse(item.value);
+
+      if (!result.success) {
+        ctx.addIssue({
+          code: "custom",
+          message: result.error.issues[0]?.message ?? "E-mail inválido",
+          path: ["emailsContato", index, "value"],
+        });
+      }
+    });
   });
 
 export type FormData = z.infer<typeof fullFormSchema>;
@@ -88,7 +135,15 @@ export const stepFields: Record<number, (keyof FormData)[]> = {
   0: ["nome", "sobrenome", "email", "telefone", "cpf", "dataNascimento", "genero"],
   1: ["cep", "logradouro", "numero", "complemento", "bairro", "cidade", "estado", "pais"],
   2: ["username", "senha", "confirmarSenha"],
-  3: ["plano", "newsletter", "notificacoesPush", "formaContato", "comentarios", "aceitaTermos"],
+  3: [
+    "plano",
+    "newsletter",
+    "notificacoesPush",
+    "formaContato",
+    "emailsContato",
+    "comentarios",
+    "aceitaTermos",
+  ],
 };
 
 export const stepLabels = [
@@ -122,6 +177,7 @@ export const defaultValues: FormData = {
   newsletter: false,
   notificacoesPush: true,
   formaContato: "email",
+  emailsContato: [{ value: "" }],
   comentarios: "",
   aceitaTermos: false,
 };

@@ -1,4 +1,4 @@
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, type FieldPath } from "react-hook-form";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
 import FormHelperText from "@mui/material/FormHelperText";
@@ -6,7 +6,7 @@ import Box from "@mui/material/Box";
 import type { FormData } from "../../schemas/formSchema";
 
 type Props = {
-  name: keyof FormData;
+  name: FieldPath<FormData>;
   label: React.ReactNode;
 };
 

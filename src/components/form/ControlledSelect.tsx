@@ -1,4 +1,4 @@
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, type FieldPath } from "react-hook-form";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";
@@ -9,7 +9,7 @@ import type { FormData } from "../../schemas/formSchema";
 type Option = { label: string; value: string };
 
 type Props = {
-  name: keyof FormData;
+  name: FieldPath<FormData>;
   label: string;
   options: Option[];
 };

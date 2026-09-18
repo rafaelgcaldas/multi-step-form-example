@@ -1,4 +1,4 @@
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, type FieldPath } from "react-hook-form";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import RadioGroup from "@mui/material/RadioGroup";
@@ -10,7 +10,7 @@ import type { FormData } from "../../schemas/formSchema";
 type Option = { label: string; value: string };
 
 type Props = {
-  name: keyof FormData;
+  name: FieldPath<FormData>;
   label: string;
   options: Option[];
   row?: boolean;

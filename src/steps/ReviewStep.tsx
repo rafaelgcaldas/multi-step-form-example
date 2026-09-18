@@ -160,6 +160,22 @@ export function ReviewStep({ onEditStep }: ReviewStepProps) {
           {values.newsletter && <Chip label="Newsletter ativa" size="small" />}
           {values.notificacoesPush && <Chip label="Notificações push ativas" size="small" />}
         </Stack>
+
+        {values.formaContato === "email" && values.emailsContato.length > 0 && (
+          <>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              E-mails de contato
+            </Typography>
+            <Stack spacing={0.25} sx={{ mb: 1.5 }}>
+              {values.emailsContato.map((item, index) => (
+                <Typography variant="body2" key={index}>
+                  {item.value || "—"}
+                </Typography>
+              ))}
+            </Stack>
+          </>
+        )}
+
         {values.comentarios && (
           <>
             <Divider sx={{ mb: 1.5 }} />
