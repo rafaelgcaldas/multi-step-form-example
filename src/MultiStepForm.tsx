@@ -7,6 +7,7 @@ import Stepper from "@mui/material/Stepper";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Snackbar from "@mui/material/Snackbar";
@@ -20,6 +21,14 @@ import {
   defaultValues,
   type FormData,
 } from "./schemas/formSchema";
+
+import {
+  salvarDadosPessoais,
+  salvarEndereco,
+  salvarConta,
+  salvarPreferencias,
+  finalizarRascunho,
+} from "./api/rascunho";
 
 import { PersonalDataStep } from "./steps/PersonalDataStep";
 import { AddressStep } from "./steps/AddressStep";
@@ -36,6 +45,15 @@ const stepComponents = [
 
 const lastStepIndex = stepLabels.length - 1;
 
+// Função de persistência (mock) correspondente a cada etapa do formulário —
+// mesma posição de `stepComponents`/`stepFields`.
+const stepPersistFns = [
+  salvarDadosPessoais,
+  salvarEndereco,
+  salvarConta,
+  salvarPreferencias,
+];
+
 type MultiStepFormProps = {
   /** Chamado após o envio do formulário ser concluído com sucesso. */
   onSubmitSuccess?: (data: FormData) => void;
@@ -44,6 +62,11 @@ type MultiStepFormProps = {
 export function MultiStepForm({ onSubmitSuccess }: MultiStepFormProps = {}) {
   const [activeStep, setActiveStep] = useState(0);
   const [submittedData, setSubmittedData] = useState<FormData | null>(null);
+  // Id do rascunho persistido no mock — criado ao salvar a primeira etapa e
+  // reaproveitado nas etapas seguintes para atualizar o mesmo registro.
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [isSavingStep, setIsSavingStep] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const methods = useForm<FormData>({
     resolver: zodResolver(fullFormSchema),
@@ -51,14 +74,32 @@ export function MultiStepForm({ onSubmitSuccess }: MultiStepFormProps = {}) {
     mode: "onTouched",
   });
 
-  const { trigger, handleSubmit } = methods;
+  const { trigger, handleSubmit, getValues } = methods;
 
   async function handleNext() {
     if (activeStep === lastStepIndex) return;
     const fieldsToValidate = stepFields[activeStep];
     const isStepValid = await trigger(fieldsToValidate);
-    if (isStepValid) {
+    if (!isStepValid) return;
+
+    const allValues = getValues();
+    const stepData: Partial<FormData> = {};
+    fieldsToValidate.forEach((field) => {
+      (stepData as Record<string, unknown>)[field] = allValues[field];
+    });
+    const persistStep = stepPersistFns[activeStep];
+
+    setIsSavingStep(true);
+    setSaveError(null);
+    try {
+      const { id } = await persistStep(draftId, stepData);
+      setDraftId(id);
       setActiveStep((prev) => prev + 1);
+    } catch (error) {
+      console.error("Erro ao salvar etapa:", error);
+      setSaveError("Não foi possível salvar os dados desta etapa. Tente novamente.");
+    } finally {
+      setIsSavingStep(false);
     }
   }
 
@@ -70,11 +111,22 @@ export function MultiStepForm({ onSubmitSuccess }: MultiStepFormProps = {}) {
     setActiveStep(step);
   }
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
     // Aqui entraria a chamada real à API, ex: await api.post("/cadastro", data)
     console.log("Formulário enviado:", data);
     setSubmittedData(data);
     onSubmitSuccess?.(data);
+
+    // Cadastro finalizado: remove o rascunho do mock e limpa o id local.
+    if (draftId) {
+      try {
+        await finalizarRascunho(draftId);
+      } catch (error) {
+        console.error("Erro ao finalizar rascunho:", error);
+      } finally {
+        setDraftId(null);
+      }
+    }
   };
 
   const isReviewStep = activeStep === lastStepIndex;
@@ -107,7 +159,7 @@ export function MultiStepForm({ onSubmitSuccess }: MultiStepFormProps = {}) {
             <Button
               variant="outlined"
               onClick={handleBack}
-              disabled={activeStep === 0}
+              disabled={activeStep === 0 || isSavingStep}
             >
               Voltar
             </Button>
@@ -117,8 +169,17 @@ export function MultiStepForm({ onSubmitSuccess }: MultiStepFormProps = {}) {
                 Confirmar e enviar
               </Button>
             ) : (
-              <Button variant="contained" onClick={handleNext}>
-                Próximo
+              <Button
+                variant="contained"
+                onClick={handleNext}
+                disabled={isSavingStep}
+                startIcon={
+                  isSavingStep ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : undefined
+                }
+              >
+                {isSavingStep ? "Salvando..." : "Próximo"}
               </Button>
             )}
           </Stack>
@@ -143,6 +204,21 @@ export function MultiStepForm({ onSubmitSuccess }: MultiStepFormProps = {}) {
           <Typography variant="caption">
             Confira os dados no console do navegador (F12).
           </Typography>
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!saveError}
+        autoHideDuration={5000}
+        onClose={() => setSaveError(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          severity="error"
+          variant="filled"
+          onClose={() => setSaveError(null)}
+        >
+          {saveError}
         </Alert>
       </Snackbar>
     </FormProvider>
