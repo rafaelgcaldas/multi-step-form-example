@@ -12,11 +12,21 @@ const theme = createTheme({
   shape: { borderRadius: 8 },
 })
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <App />
-    </ThemeProvider>
-  </StrictMode>,
-)
+async function enableMocking() {
+  // O MSW só é utilizado em desenvolvimento, para simular a API de cadastros.
+  if (!import.meta.env.DEV) return;
+
+  const { worker } = await import('./mocks/browser');
+  return worker.start({ onUnhandledRequest: 'bypass' });
+}
+
+enableMocking().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <App />
+      </ThemeProvider>
+    </StrictMode>,
+  )
+})

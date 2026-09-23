@@ -36,7 +36,12 @@ const stepComponents = [
 
 const lastStepIndex = stepLabels.length - 1;
 
-export function MultiStepForm() {
+type MultiStepFormProps = {
+  /** Chamado após o envio do formulário ser concluído com sucesso. */
+  onSubmitSuccess?: (data: FormData) => void;
+};
+
+export function MultiStepForm({ onSubmitSuccess }: MultiStepFormProps = {}) {
   const [activeStep, setActiveStep] = useState(0);
   const [submittedData, setSubmittedData] = useState<FormData | null>(null);
 
@@ -69,6 +74,7 @@ export function MultiStepForm() {
     // Aqui entraria a chamada real à API, ex: await api.post("/cadastro", data)
     console.log("Formulário enviado:", data);
     setSubmittedData(data);
+    onSubmitSuccess?.(data);
   };
 
   const isReviewStep = activeStep === lastStepIndex;
